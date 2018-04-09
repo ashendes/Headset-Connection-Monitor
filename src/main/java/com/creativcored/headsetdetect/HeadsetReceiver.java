@@ -1,10 +1,12 @@
 package com.creativcored.headsetdetect;
 
+import android.annotation.TargetApi;
 import android.app.Service;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.media.AudioDeviceInfo;
 import android.media.AudioManager;
 import android.util.Log;
 
@@ -15,36 +17,52 @@ import android.util.Log;
 public class HeadsetReceiver extends BroadcastReceiver {
 
     static AudioManager audioManager;
-    private boolean headsetConnected = false;
+    private boolean wiredHeadsetConnected;
+    private boolean bluetoothHeadsetConnected;
+
     final static String LOG_TAG = "HeadsetReceiver";
 
     private BroadcastReceiver mReceiver;
 
     public void onReceive(Context context, Intent intent){
-        boolean bluetoothHeadsetConnected =  (audioManager.isBluetoothA2dpOn() || audioManager.isBluetoothScoOn());
-        Log.i(LOG_TAG, "onReceive");
+
+        /*Log.i(LOG_TAG, "onReceive");
         if(!intent.getAction().equals(Intent.ACTION_HEADSET_PLUG ) && !bluetoothHeadsetConnected) {
             return;
-        }
+        }*/
         if (intent.getAction().equals(Intent.ACTION_HEADSET_PLUG)) {
             int state = intent.getIntExtra("state", -1);
             switch (state) {
                 case 0:
                     Log.d(LOG_TAG, "Headset is unplugged");
-                    headsetConnected = false;
+                    wiredHeadsetConnected = false;
                     break;
                 case 1:
                     Log.d(LOG_TAG, "Headset is plugged");
-                    headsetConnected = true;
+                    wiredHeadsetConnected = true;
                     break;
                 default:
                     Log.d(LOG_TAG, "I have no idea what the headset state is");
             }
+        }else{
+            return;
         }
     }
 
     public boolean detectHeadphones(){
-        return headsetConnected;
+        bluetoothHeadsetConnected =  (audioManager.isBluetoothA2dpOn() || audioManager.isBluetoothScoOn());
+        return (wiredHeadsetConnected || bluetoothHeadsetConnected);
+    }
+
+    @TargetApi(23)
+    public boolean detectHeadphones2(){
+        AudioDeviceInfo[] devInfo = audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS);
+        for(AudioDeviceInfo info: devInfo){
+            if(info.getType() == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP || info.getType() == AudioDeviceInfo.TYPE_WIRED_HEADPHONES){
+                return true;
+            }
+        }
+        return false;
     }
 
     private HeadsetReceiver(Context context){
